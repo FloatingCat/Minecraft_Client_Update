@@ -11,6 +11,7 @@ using System.Windows.Forms;
 using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 
 namespace Client_Update
 {
@@ -21,12 +22,14 @@ namespace Client_Update
     public partial class MainWindow : Window
     {
 
-
+        string owner;
+        string repo;
+        string access_token;
         string path;
         string cookies;
         int download_counts = 0;
         int download_total = 0;
-
+        List<Hashtable> Gitee_Mods_List;
         class OutputShow : INotifyPropertyChanged //绑定对象  
         {
             public string show;//显示
@@ -329,9 +332,159 @@ namespace Client_Update
 
         }
 
+
+
+
+        //---------------------------------------Gitee Way------------------------------------
+        private JArray Gitee_Get_Mods(string _owner="stugiii",string _repo= "mc_endtime_may_2021",string _sha= "main",string _access_token= "a6fc2b1467c4d9f77f65e5651dfcf845")
+        {
+            //https://gitee.com/api/v5/repos/stugiii/mc_endtime_may_2021/git/trees/main?access_token=a6fc2b1467c4d9f77f65e5651dfcf845&recursive=1
+            WebClient client = new WebClient();
+            client.Headers.Set("Content-Type", "application/json;charset=UTF-8");
+            string url_buffer = "https://gitee.com/api/v5/repos/"+_owner+"/"+_repo+"/git/trees/"+_sha+ "?access_token="+_access_token+"&recursive=1";
+            repo = _repo;
+            access_token = _access_token;
+            owner =  _owner;
+            Console.WriteLine(url_buffer);
+            byte[] bytes = client.DownloadData(url_buffer);
+            string reply = System.Text.Encoding.UTF8.GetString(bytes);   //解析回应
+            dynamic _mods_obj = JsonConvert.DeserializeObject(reply);
+            Console.WriteLine(_mods_obj["tree"]);
+            JArray _mods_obj_processed = _mods_obj["tree"];
+            
+            foreach (JObject item in _mods_obj_processed)
+            {
+                if (item.GetValue("path").ToString()== ".gitattributes" || item.GetValue("path").ToString() == "mods")
+                {
+                    _mods_obj_processed.Remove(item);
+                    break;
+                }
+
+            }
+            foreach (JObject item in _mods_obj_processed)
+            {
+                if (item.GetValue("path").ToString() == "mods")
+                {
+                    _mods_obj_processed.Remove(item);
+                    break;
+                }
+
+            }
+            Console.WriteLine(_mods_obj_processed);
+            List<Hashtable> _gitee_mods_list_temp = _mods_obj["tree"].ToObject<List<Hashtable>>();
+            Gitee_Mods_List = _gitee_mods_list_temp;
+            return _mods_obj["tree"];
+        }
+        private Hashtable Gitee_Compare_Difference(JArray _mods_gitee, JArray _mods_client,int model) //1 is add
+        {
+            List<string> _res_diff;
+            Hashtable _res_table = new Hashtable();
+            dynamic _gitee_mods_list_temp_keys = Gitee_Mods_List;
+            Console.WriteLine(Gitee_Mods_List.GetType());
+            List<string> _gitee_mods_list = new List<string>();
+            Hashtable _gitee_mods_table = new Hashtable();
+            List<string> _client_mods_list = new List<string>();
+            //List<string> diff_del =_gitee_mods_list.Except(_mods_client).ToList();
+            foreach (Hashtable jt in _gitee_mods_list_temp_keys)
+            {
+                _gitee_mods_list.Add(jt["path"].ToString().Replace("mods/",""));
+                _gitee_mods_table.Add(jt["path"].ToString().Replace("mods/", ""), jt["sha"]);
+            }
+            foreach (dynamic jt in _mods_client)
+            {
+                _client_mods_list.Add(jt.ToString());
+            }
+            List<string> diff_del = new List<string>();
+            Console.WriteLine(_gitee_mods_list);
+            Console.WriteLine(_client_mods_list);
+            if (model == 1)
+            {
+                _res_diff = _gitee_mods_list.Except(_client_mods_list).ToList();
+            }
+            else { _res_diff = _client_mods_list.Except(_gitee_mods_list).ToList(); } 
+            foreach(string item in _res_diff)
+            {
+                if (_gitee_mods_table.Contains(item))
+                {
+                    _res_table.Add(item,_gitee_mods_table[item]);
+                }
+            }
+            Console.WriteLine(_res_table);
+            return _res_table;
+        }
+        private void file_del_mods(Hashtable del_mods)
+        {
+            foreach (string item in del_mods.Keys)
+            {
+                //output_text.Text +="DEL " +item + (char)13;
+                fmt_output("DEL: " + item);
+                File.Delete(path + "\\" + item);
+            }
+        }
+        private void file_download_mods(Hashtable add_mods)
+        {
+            WebClient Client = new WebClient();
+            fmt_output("下载更新内容：");
+            if (add_mods.Count==0)
+            {
+                fmt_output("No file needs to download");
+                //output_text.Text +="No file needs to add" + (char)13;
+                return;
+            }
+            download_counts = 0;
+            download_total = add_mods.Count;
+            //foreach (string item in del_mods) {
+            //    _mods_gitee.
+            //}
+            foreach (string item in add_mods.Keys)
+            {
+                //https://gitee.com/api/v5/repos/{owner}/{repo}/git/blobs/{sha}
+                WebClient client = new WebClient();
+                client.Headers.Set("Content-Type", "application/json;charset=UTF-8");
+                string url_buffer = "https://gitee.com/api/v5/repos/" + owner + "/" + repo + "/git/blobs/" + add_mods[item] + "?access_token=" + access_token;
+                Console.WriteLine(url_buffer);
+                byte[] bytes = client.DownloadData(url_buffer);
+                string reply = System.Text.Encoding.UTF8.GetString(bytes);   //解析回应
+                dynamic _mod_obj = JsonConvert.DeserializeObject(reply);
+                //Console.WriteLine(_mod_obj);
+                string _buffer_content = _mod_obj["content"];
+                // base64解码
+                bytes = Convert.FromBase64String(_buffer_content);
+                //_buffer_content =  Encoding.Default.GetString(bytes);
+                string outPath = path + "\\" + item;
+                using (var fs = new FileStream(outPath, FileMode.Create, FileAccess.Write))
+                {
+                    fs.Write(bytes, 0, bytes.Length);
+                    fs.Flush();
+                }
+                Console.WriteLine("download and write done: "+outPath);
+            }
+        }
         private void Gitee_Button_Click(object sender, RoutedEventArgs e)
         {
+            output_text.Text = "";
+            JArray _mods_gitee =Gitee_Get_Mods();
+            JArray _mods_client = (JArray)JsonConvert.DeserializeObject(get_mods());
+            Hashtable diff_del = Gitee_Compare_Difference(_mods_gitee, _mods_client,2);
+            //Console.WriteLine("diff_del: "+diff_del.ToString());
+            //foreach(string st in diff_del)
+            //{
+            //    Console.WriteLine("diff_del: " + st);
 
+            //}
+            Hashtable diff_add = Gitee_Compare_Difference(_mods_gitee, _mods_client, 1);
+            //foreach (string st in diff_del.Keys)
+            //{
+            //    Console.WriteLine("diff_del: " + st);
+
+            //}
+            //foreach (string st in diff_add.Keys)
+            //{
+            //    Console.WriteLine("diff_add: " + st);
+
+            //}
+            file_del_mods(diff_del);
+            file_download_mods(diff_add);
         }
     }
     

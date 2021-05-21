@@ -5,17 +5,17 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Client_Update"
         mc:Ignorable="d"
-        Title="自动更新" Height="527.176" Width="1000.118">
+        Title="Mods自动更新" Height="527.176" Width="1000.118">
     <Grid Margin="0,0,-41,-31">
         <Grid.ColumnDefinitions>
             <ColumnDefinition/>
         </Grid.ColumnDefinitions>
-        <Button x:Name="button" Content="更新Mods" HorizontalAlignment="Left" Margin="30,358,0,0" VerticalAlignment="Top" Width="158" RenderTransformOrigin="0.722,8.957" Height="54" Click="UPD_click"/>
+        <Button x:Name="button" Content="更新Mods（HTTP下载）" HorizontalAlignment="Left" Margin="30,358,0,0" VerticalAlignment="Top" Width="158" RenderTransformOrigin="0.722,8.957" Height="54" Click="UPD_click" IsEnabled="False"/>
         <TextBox x:Name="output_text" HorizontalAlignment="Left" Height="316" Margin="30,24,0,0" TextWrapping="Wrap" Text="{Binding Path=Show, Mode=TwoWay}" VerticalAlignment="Top" Width="915"/>
         <Button x:Name="button_Copy1" Content="同步设置" HorizontalAlignment="Left" Margin="213,358,0,0" VerticalAlignment="Top" Width="158" RenderTransformOrigin="0.722,8.957" Height="54" Click="Sync_click" IsEnabled="False"/>
         <ProgressBar x:Name="progressBar1" HorizontalAlignment="Left" Height="20" Margin="769,370,0,0" VerticalAlignment="Top" Width="167" ValueChanged="client_DownloadProgressChanged"/>
         <TextBox x:Name="log_download" HorizontalAlignment="Left" Height="65" Margin="769,411,0,0" TextWrapping="Wrap" Text="等待下载任务启动..." VerticalAlignment="Top" Width="212" TextChanged="TextBox_TextChanged"/>
-        <Button x:Name="Gitee_Button" Content="Gitee Way" HorizontalAlignment="Left" Margin="402,358,0,0" VerticalAlignment="Top" Width="158" RenderTransformOrigin="0.722,8.957" Height="54" Click="Gitee_Button_Click" IsEnabled="False"/>
+        <Button x:Name="Gitee_Button" Content="更新Mods（流传输）" HorizontalAlignment="Left" Margin="402,358,0,0" VerticalAlignment="Top" Width="158" RenderTransformOrigin="0.722,8.957" Height="54" Click="Gitee_Button_Click"/>
         <TextBlock x:Name="path_block" HorizontalAlignment="Left" Margin="30,439,0,0" TextWrapping="Wrap" Text="当前目录：" VerticalAlignment="Top" Height="25" Width="530"/>
 
     </Grid>
